@@ -1,69 +1,50 @@
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.NoSuchElementException;
-import java.util.Scanner;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+
 
 public class EchoServer {
-    private final int port;
+    private int port;
 
-
-    public EchoServer(int port) {
+    private EchoServer(int port) {
         this.port = port;
     }
-
-    static EchoServer bindToPort(int port) {
+    public static EchoServer bindToPort(int port) {
         return new EchoServer(port);
     }
+    private final ExecutorService pool =
+            Executors.newCachedThreadPool();
+
+    public static LinkedList <ServerSomething> serverList = new LinkedList<>();
+
+    public final List<String> names = List.of("Bahtiyar", "Maksim", "Aleksei", "Jamilya", "Kairat", "Andrei", "Azidin", "Asema", "Tariel'");
+
+    public static String name;
+    private static final Random r = new Random();
+
+
 
     public void run() {
-        try (ServerSocket server = new ServerSocket(port)) {
-            while (!server.isClosed()){
+        try (var server = new ServerSocket(port)) {
+            while (!server.isClosed()) {
                 Socket clientSocket = server.accept();
-                handle(clientSocket);
-            }
-            try (var clientSocket = server.accept()) {
-                handle(clientSocket);
-            }
+                this.name = names.get(r.nextInt(names.size()));
+                pool.submit( () -> Aid.handle(clientSocket, name));
 
+                serverList.add(new ServerSomething(clientSocket));
+
+            }
         } catch (IOException e) {
-            System.out.printf("Most likely the port %s is busy. %n");
+            System.out.printf("Most probably port %s is busy.%n", port);
             e.printStackTrace();
+
         }
     }
 
-    private void handle(Socket socket) throws IOException {
-        var input = socket.getInputStream();
-        var isr = new InputStreamReader(input, StandardCharsets.UTF_8);
-        var scanner = new Scanner(isr);
 
-        OutputStream outputStream = socket.getOutputStream();
-        PrintWriter writer = new PrintWriter(outputStream);
-
-        try (scanner; writer) {
-            while (true) {
-                var message = scanner.nextLine().strip();
-                System.out.printf("Got %s%n", message);
-
-                StringBuilder reverseString = new StringBuilder(message).reverse();
-                String result = reverseString.toString();
-                System.out.printf("reversed - %s%n", result);
-
-                writer.write(result);
-                writer.write(System.lineSeparator());
-                writer.flush();
-
-                if ("bye".equalsIgnoreCase(message)) {
-                    System.out.println("bye bye!%n");
-                    return;
-                }
-            }
-        } catch (NoSuchElementException e) {
-            System.out.println("Client dropped the connection!%n");
-        }
-    }
 }
+
